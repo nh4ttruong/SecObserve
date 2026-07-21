@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from rest_framework.serializers import (
     CharField,
@@ -15,9 +15,10 @@ from rest_framework.serializers import (
 from application.commons.services.functions import validate_vex_remediations
 from application.core.api.serializers_observation import ObservationListSerializer
 from application.core.api.serializers_product import NestedProductSerializer
-from application.core.models import Product
-from application.rules.models import Rule
-from application.rules.types import Rule_Status, Rule_Type
+from application.core.models import Observation, Product
+from application.import_observations.models import Parser
+from application.rules.models import Rule, Rule_Simulation
+from application.rules.types import Rule_Simulation_Status, Rule_Status, Rule_Type
 
 
 class GeneralRuleSerializer(ModelSerializer):
@@ -129,6 +130,70 @@ class RuleApprovalSerializer(Serializer):
         return super().validate(attrs)
 
 
-class SimulationResultSerializer(Serializer):
-    count = IntegerField()
-    results = ListField(child=ObservationListSerializer())
+class RuleSimulationRequestSerializer(Serializer):
+    products = ListField(
+        child=IntegerField(min_value=1),
+        required=False,
+        default=list,
+        max_length=100,
+    )
+    parser = IntegerField(min_value=1, required=False, allow_null=True)
+    scanner_prefix = CharField(max_length=255, required=False, allow_blank=True, default="")
+
+    def validate_products(self, value: list[int]) -> list[int]:
+        product_ids = list(dict.fromkeys(value))
+        if Product.objects.filter(pk__in=product_ids, is_product_group=False).count() != len(product_ids):
+            raise ValidationError("One or more products do not exist")
+        return product_ids
+
+    def validate_parser(self, value: Optional[int]) -> Optional[int]:
+        if value and not Parser.objects.filter(pk=value).exists():
+            raise ValidationError("Parser does not exist")
+        return value
+
+
+class RuleSimulationSerializer(ModelSerializer):
+    results = SerializerMethodField()
+
+    class Meta:
+        model = Rule_Simulation
+        fields = [
+            "id",
+            "rule",
+            "status",
+            "products",
+            "parser",
+            "scanner_prefix",
+            "candidate_count",
+            "processed_count",
+            "match_count",
+            "results",
+            "error_message",
+            "created",
+            "started",
+            "finished",
+        ]
+        read_only_fields = fields
+
+    def get_results(self, simulation: Rule_Simulation) -> list[dict[str, Any]]:
+        if simulation.status != Rule_Simulation_Status.STATUS_COMPLETED or not simulation.result_observation_ids:
+            return []
+
+        observations = Observation.objects.filter(pk__in=simulation.result_observation_ids).select_related(
+            "product",
+            "product__product_group",
+            "branch",
+            "origin_service",
+            "parser",
+            "general_rule",
+            "general_rule_rego",
+            "product_rule",
+            "product_rule_rego",
+        )
+        observations_by_id = {observation.pk: observation for observation in observations}
+        ordered_observations = [
+            observations_by_id[observation_id]
+            for observation_id in simulation.result_observation_ids
+            if observation_id in observations_by_id
+        ]
+        return cast(list[dict[str, Any]], ObservationListSerializer(ordered_observations, many=True).data)

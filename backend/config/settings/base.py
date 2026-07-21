@@ -459,3 +459,13 @@ HUEY = {
         "health_check_interval": 60,  # Check worker health every second.
     },
 }
+
+RULE_SIMULATION_CHUNK_SIZE = env.int("RULE_SIMULATION_CHUNK_SIZE", default=1000)
+RULE_SIMULATION_MAX_CANDIDATES = env.int("RULE_SIMULATION_MAX_CANDIDATES", default=250000)
+RULE_SIMULATION_MAX_CONCURRENT = env.int("RULE_SIMULATION_MAX_CONCURRENT", default=1)
+RULE_SIMULATION_RETENTION_DAYS = env.int("RULE_SIMULATION_RETENTION_DAYS", default=7)
+
+if RULE_SIMULATION_CHUNK_SIZE < 1:
+    raise ValueError("RULE_SIMULATION_CHUNK_SIZE must be greater than 0")
+if RULE_SIMULATION_RETENTION_DAYS < 1:
+    raise ValueError("RULE_SIMULATION_RETENTION_DAYS must be greater than 0")

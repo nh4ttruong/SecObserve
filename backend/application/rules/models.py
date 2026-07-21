@@ -1,8 +1,11 @@
+import uuid
 from typing import Any
 
 from django.db.models import (
     CASCADE,
     PROTECT,
+    SET_NULL,
+    BigIntegerField,
     BooleanField,
     CharField,
     DateTimeField,
@@ -11,6 +14,7 @@ from django.db.models import (
     JSONField,
     Model,
     TextField,
+    UUIDField,
 )
 
 from application.access_control.models import User
@@ -18,7 +22,7 @@ from application.access_control.services.current_user import get_current_user
 from application.commons.models import Settings
 from application.core.models import Product
 from application.core.types import Severity, Status, VEX_Justification
-from application.rules.types import Rule_Status, Rule_Type
+from application.rules.types import Rule_Simulation_Status, Rule_Status, Rule_Type
 
 
 class Rule(Model):
@@ -102,3 +106,39 @@ class Rule(Model):
 
     def __str__(self) -> str:
         return self.name
+
+
+class Rule_Simulation(Model):
+    id = UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    rule = ForeignKey(Rule, on_delete=CASCADE, related_name="simulations")
+    user = ForeignKey(User, on_delete=PROTECT, related_name="rule_simulations")
+    status = CharField(
+        max_length=16,
+        choices=Rule_Simulation_Status.STATUS_CHOICES,
+        default=Rule_Simulation_Status.STATUS_QUEUED,
+    )
+
+    products = JSONField(default=list, blank=True)
+    parser = ForeignKey("import_observations.Parser", null=True, blank=True, on_delete=SET_NULL)
+    scanner_prefix = CharField(max_length=255, blank=True)
+
+    candidate_count = BigIntegerField(default=0)
+    processed_count = BigIntegerField(default=0)
+    match_count = BigIntegerField(default=0)
+    result_observation_ids = JSONField(default=list, blank=True)
+
+    rule_definition_hash = CharField(max_length=64)
+    error_message = TextField(max_length=2048, blank=True)
+    created = DateTimeField(auto_now_add=True)
+    started = DateTimeField(null=True)
+    finished = DateTimeField(null=True)
+
+    class Meta:
+        indexes = [
+            Index(fields=["user", "-created"], name="rules_sim_user_created_idx"),
+            Index(fields=["status", "-created"], name="rules_sim_status_created_idx"),
+            Index(fields=["rule", "status"], name="rules_sim_rule_status_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.rule.name} / {self.status}"

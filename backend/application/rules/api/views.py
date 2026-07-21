@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from typing import Any, cast
 
 from django.db.models import QuerySet
 from django_filters.rest_framework import DjangoFilterBackend
@@ -7,15 +7,15 @@ from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.filters import SearchFilter
+from rest_framework.mixins import RetrieveModelMixin
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
+from application.access_control.models import User
 from application.authorization.services.authorization import user_has_permission_or_403
 from application.authorization.services.roles_permissions import Permissions
-from application.core.models import Observation
 from application.rules.api.filters import GeneralRuleFilter, ProductRuleFilter
 from application.rules.api.permissions import (
     UserHasGeneralRulePermission,
@@ -25,9 +25,10 @@ from application.rules.api.serializers import (
     GeneralRuleSerializer,
     ProductRuleSerializer,
     RuleApprovalSerializer,
-    SimulationResultSerializer,
+    RuleSimulationRequestSerializer,
+    RuleSimulationSerializer,
 )
-from application.rules.models import Rule
+from application.rules.models import Rule, Rule_Simulation
 from application.rules.queries.rule import (
     get_general_rule_by_id,
     get_general_rules,
@@ -35,13 +36,16 @@ from application.rules.queries.rule import (
     get_product_rules,
 )
 from application.rules.services.approval import rule_approval
-from application.rules.services.simulator import simulate_rule
-
-
-@dataclass
-class SimulationResult:
-    count: int
-    results: list[Observation]
+from application.rules.services.simulation_jobs import (
+    InvalidSimulationScope,
+    SimulationBusy,
+    SimulationLimitExceeded,
+    cancel_rule_simulation,
+    create_rule_simulation,
+    mark_rule_simulation_failed,
+)
+from application.rules.services.simulator import SimulationScope
+from application.rules.tasks import run_rule_simulation
 
 
 class GeneralRuleViewSet(ModelViewSet):
@@ -80,7 +84,8 @@ class GeneralRuleViewSet(ModelViewSet):
 
     @extend_schema(
         methods=["POST"],
-        responses={200: SimulationResultSerializer},
+        request=RuleSimulationRequestSerializer,
+        responses={status.HTTP_202_ACCEPTED: RuleSimulationSerializer},
     )
     @action(detail=True, methods=["post"])
     def simulate(self, request: Request, pk: int) -> Response:
@@ -88,7 +93,7 @@ class GeneralRuleViewSet(ModelViewSet):
         if not rule:
             raise NotFound()
 
-        return _do_simulation(rule)
+        return _start_simulation(request, rule)
 
 
 class ProductRuleViewSet(ModelViewSet):
@@ -129,7 +134,8 @@ class ProductRuleViewSet(ModelViewSet):
 
     @extend_schema(
         methods=["POST"],
-        responses={200: SimulationResultSerializer},
+        request=RuleSimulationRequestSerializer,
+        responses={status.HTTP_202_ACCEPTED: RuleSimulationSerializer},
     )
     @action(detail=True, methods=["post"])
     def simulate(self, request: Request, pk: int) -> Response:
@@ -139,12 +145,55 @@ class ProductRuleViewSet(ModelViewSet):
 
         user_has_permission_or_403(rule.product, Permissions.Observation_View)
 
-        return _do_simulation(rule)
+        return _start_simulation(request, rule)
 
 
-def _do_simulation(rule: Rule) -> Response:
-    num_observations, observations = simulate_rule(rule)
-    simulation_result = SimulationResult(count=num_observations, results=observations)
-    response_serializer = SimulationResultSerializer(simulation_result)
+class RuleSimulationViewSet(RetrieveModelMixin, GenericViewSet):
+    serializer_class = RuleSimulationSerializer
+    permission_classes = (IsAuthenticated,)
+    queryset = Rule_Simulation.objects.none()
 
-    return Response(status=HTTP_200_OK, data=response_serializer.data)
+    def get_queryset(self) -> QuerySet[Rule_Simulation]:
+        user = cast(User, self.request.user)
+        return Rule_Simulation.objects.filter(user=user).select_related("rule", "parser")
+
+    @extend_schema(responses={status.HTTP_204_NO_CONTENT: None})
+    def destroy(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        simulation = self.get_object()
+        cancel_rule_simulation(simulation)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def _start_simulation(request: Request, rule: Rule) -> Response:
+    request_serializer = RuleSimulationRequestSerializer(data=request.data)
+    if not request_serializer.is_valid():
+        raise ValidationError(request_serializer.errors)
+
+    scope = SimulationScope(
+        product_ids=tuple(request_serializer.validated_data.get("products", [])),
+        parser_id=request_serializer.validated_data.get("parser"),
+        scanner_prefix=request_serializer.validated_data.get("scanner_prefix", ""),
+    )
+
+    try:
+        simulation = create_rule_simulation(rule, cast(User, request.user), scope)
+    except (InvalidSimulationScope, SimulationLimitExceeded) as exception:
+        raise ValidationError(str(exception)) from exception
+    except SimulationBusy as exception:
+        return Response(
+            status=status.HTTP_409_CONFLICT,
+            data={"detail": str(exception)},
+        )
+
+    try:
+        run_rule_simulation(str(simulation.pk))
+    except Exception as exception:
+        mark_rule_simulation_failed(simulation, exception)
+        return Response(
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            data={"detail": "The rule simulation could not be queued"},
+        )
+
+    response_serializer = RuleSimulationSerializer(simulation)
+
+    return Response(status=status.HTTP_202_ACCEPTED, data=response_serializer.data)

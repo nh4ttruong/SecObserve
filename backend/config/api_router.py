@@ -51,7 +51,11 @@ from application.licenses.api.views import (
     LicenseViewSet,
 )
 from application.notifications.api.views import NotificationViewSet
-from application.rules.api.views import GeneralRuleViewSet, ProductRuleViewSet
+from application.rules.api.views import (
+    GeneralRuleViewSet,
+    ProductRuleViewSet,
+    RuleSimulationViewSet,
+)
 from application.vex.api.views import (
     CSAFBranchViewSet,
     CSAFViewSet,
@@ -101,6 +105,7 @@ router.register("component_names", ComponentNameViewSet, basename="component_nam
 router.register("general_rules", GeneralRuleViewSet, basename="general_rules")
 router.register("api_configurations", ApiConfigurationViewSet, basename="api_configurations")
 router.register("product_rules", ProductRuleViewSet, basename="product_rules")
+router.register("rule_simulations", RuleSimulationViewSet, basename="rule_simulations")
 router.register("evidences", EvidenceViewSet, basename="evidences")
 router.register("notifications", NotificationViewSet, basename="notifications")
 router.register("vulnerability_checks", VulnerabilityCheckViewSet, basename="vulnerability_checks")

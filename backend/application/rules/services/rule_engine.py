@@ -30,8 +30,17 @@ from application.rules.types import Rule_Status, Rule_Type
 
 
 class Rule_Engine:
-    def __init__(self, product: Product) -> None:
+    def __init__(self, product: Product, rules: Optional[list[Rule]] = None) -> None:
         self.product = product
+        self.rego_interpreters: dict[Any, RegoInterpreter] = {}
+        self.rules: list[Rule]
+
+        if rules is not None:
+            self.rules = rules
+            for rule in self.rules:
+                if rule.type == Rule_Type.RULE_TYPE_REGO:
+                    self.rego_interpreters[rule.pk] = RegoInterpreter(rule.rego_module)
+            return
 
         product_parser_rules = Rule.objects.filter(
             product=product,
@@ -41,7 +50,7 @@ class Rule_Engine:
                 Rule_Status.RULE_STATUS_AUTO_APPROVED,
             ],
         )
-        self.rules: list[Rule] = list(product_parser_rules)
+        self.rules = list(product_parser_rules)
 
         if product.product_group:
             product_group_parser_rules = Rule.objects.filter(
@@ -61,7 +70,6 @@ class Rule_Engine:
             )
             self.rules += list(general_rules)
 
-        self.rego_interpreters: dict[Any, RegoInterpreter] = {}
         for rule in self.rules:
             if rule.type == Rule_Type.RULE_TYPE_REGO:
                 self.rego_interpreters[rule.pk] = RegoInterpreter(rule.rego_module)
