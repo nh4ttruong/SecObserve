@@ -83,6 +83,17 @@ class BaseScanner:
 
         return numbers
 
+    def scan_scope(
+        self, product: Product, branch: Optional[Branch], service: Optional[Service]
+    ) -> Tuple[int, int, int]:
+        if branch and service:
+            return self._scan_branch_and_service(branch, service)
+        if branch:
+            return self._scan_branch_no_service(branch)
+        if service:
+            return self._scan_no_branch_but_service(product, service)
+        return self._scan_no_branch_no_service(product)
+
     def _scan_no_branch_no_service(self, product: Product) -> Tuple[int, int, int]:
         license_components = list(
             License_Component.objects.filter(product=product, branch__isnull=True, origin_service__isnull=True).exclude(

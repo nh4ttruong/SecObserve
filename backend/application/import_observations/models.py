@@ -98,6 +98,27 @@ class Vulnerability_Check(Model):
         )
 
 
+class Scan_Request(Model):
+    # Marker that a scope needs to be scanned. The task deletes it before it reads the components,
+    # so an import that commits during a scan requests a new one instead of being swallowed by it.
+    product = ForeignKey(Product, on_delete=CASCADE)
+    branch = ForeignKey(Branch, on_delete=CASCADE, null=True)
+    service = ForeignKey(Service, on_delete=CASCADE, null=True)
+    created = DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Scopes without a branch or service can still be requested twice, because databases do not
+        # treat NULLs as equal. A duplicate only costs one superfluous scan.
+        unique_together = (
+            "product",
+            "branch",
+            "service",
+        )
+
+    def __str__(self) -> str:
+        return f"{self.product} / {self.branch} / {self.service}"
+
+
 class OSV_Cache(Model):
     osv_id = CharField(max_length=255, unique=True)
     data = TextField()

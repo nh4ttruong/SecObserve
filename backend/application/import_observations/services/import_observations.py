@@ -53,6 +53,7 @@ from application.import_observations.parsers.base_parser import (
     BaseAPIParser,
     BaseFileParser,
 )
+from application.import_observations.services.osv_scan_request import request_osv_scan
 from application.import_observations.services.parser_detector import (
     detect_parser,
     instanciate_parser,
@@ -202,6 +203,12 @@ def file_upload_observations(
         numbers_license_components = process_license_components(
             imported_license_components, scanner, vulnerability_check
         )
+
+        # New and deleted components mean the component set has changed, so the OSV observations of
+        # this scope are stale. Updated components are not a signal, they are counted for every
+        # import that has seen a component again.
+        if numbers_license_components[0] + numbers_license_components[2] > 0:
+            request_osv_scan(file_upload_parameters.product, file_upload_parameters.branch, service)
 
     return (
         numbers_observations[0],

@@ -151,6 +151,11 @@ const SettingsEdit = () => {
                                     label="Enable automatic OSV scanning"
                                 />
                                 <BooleanInput
+                                    source="feature_osv_scan_after_import"
+                                    label="Enable OSV scanning after import"
+                                    helperText="Scan directly after an import has changed the components of a product"
+                                />
+                                <BooleanInput
                                     source="feature_automatic_vulnerablecode_scanning"
                                     label="Enable automatic VulnerableCode scanning"
                                 />

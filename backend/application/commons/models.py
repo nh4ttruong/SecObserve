@@ -214,6 +214,9 @@ class Settings(Model, DirtyFieldsMixin):
         help_text="Hour crontab expression for importing licenses (UTC)",
     )
     feature_automatic_osv_scanning = BooleanField(default=True, help_text="Enable automatic OSV scanning")
+    feature_osv_scan_after_import = BooleanField(
+        default=True, help_text="Scan with OSV after an import has changed the components of a product"
+    )
     feature_automatic_vulnerablecode_scanning = BooleanField(
         default=False, help_text="Enable automatic VulnerableCode scanning"
     )

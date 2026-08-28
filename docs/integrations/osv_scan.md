@@ -49,6 +49,15 @@ If both preconditions are met, the OSV scan can be started manually from the `Im
 ![OSV scanning import](../assets/images/screenshot_osv_scanning_import.png){ width="40%" style="display: block; margin: 0 auto" }
 
 
+## Scan after import
+
+When an import changes the components of a product, the OSV observations of that product, branch and service are outdated until the next scan. To avoid waiting for the next automatic scan, a scan of the imported branch and service is started in the background directly after such an import.
+
+The scan runs if `OSV scanning enabled` and `Automatic OSV scanning enabled` are activated for the product and the general setting `Enable OSV scanning after import` is activated in the `Features` section of the [Settings](../getting_started/configuration.md#admininistration-in-secobserve). Only imports that add or remove components start a scan, an import that reports the same components as before does not.
+
+While a scan is pending for a scope, further imports of that scope do not start additional scans. The pending scan is started after the last of those imports, so its result always includes the most recent components.
+
+
 ## Automatic scan
 
 OSV scanning can be configured to run automatically at a specific time. There is a general setting and a setting per API configuration.

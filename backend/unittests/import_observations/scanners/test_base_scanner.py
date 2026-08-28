@@ -206,6 +206,50 @@ class TestBaseScanner(BaseTestCase):
         mock_scan_license_components.assert_has_calls(expected_calls)
 
     @patch("application.import_observations.scanners.base_scanner.BaseScanner._scan_license_components")
+    def test_scan_scope_branch_and_service(self, mock_scan_license_components):
+        self.license_component.branch = self.branch_main
+        self.license_component.origin_service = self.service_frontend
+        self.license_component.save()
+
+        mock_scan_license_components.return_value = (0, 0, 0)
+        ScannerStub().scan_scope(self.product, self.branch_main, self.service_frontend)
+
+        mock_scan_license_components.assert_called_once_with(
+            [self.license_component], self.product, self.branch_main, self.service_frontend
+        )
+
+    @patch("application.import_observations.scanners.base_scanner.BaseScanner._scan_license_components")
+    def test_scan_scope_branch_without_service(self, mock_scan_license_components):
+        self.license_component.branch = self.branch_main
+        self.license_component.save()
+
+        mock_scan_license_components.return_value = (0, 0, 0)
+        ScannerStub().scan_scope(self.product, self.branch_main, None)
+
+        mock_scan_license_components.assert_called_once_with(
+            [self.license_component], self.product, self.branch_main, None
+        )
+
+    @patch("application.import_observations.scanners.base_scanner.BaseScanner._scan_license_components")
+    def test_scan_scope_service_without_branch(self, mock_scan_license_components):
+        self.license_component.origin_service = self.service_frontend
+        self.license_component.save()
+
+        mock_scan_license_components.return_value = (0, 0, 0)
+        ScannerStub().scan_scope(self.product, None, self.service_frontend)
+
+        mock_scan_license_components.assert_called_once_with(
+            [self.license_component], self.product, None, self.service_frontend
+        )
+
+    @patch("application.import_observations.scanners.base_scanner.BaseScanner._scan_license_components")
+    def test_scan_scope_product_only(self, mock_scan_license_components):
+        mock_scan_license_components.return_value = (0, 0, 0)
+        ScannerStub().scan_scope(self.product, None, None)
+
+        mock_scan_license_components.assert_called_once_with([self.license_component], self.product, None, None)
+
+    @patch("application.import_observations.scanners.base_scanner.BaseScanner._scan_license_components")
     def test_scan_branch_sums_numbers(self, mock_scan_license_components):
         mock_scan_license_components.return_value = (1, 2, 3)
 

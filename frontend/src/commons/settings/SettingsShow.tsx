@@ -96,6 +96,9 @@ const SettingsShowComponent = () => {
                                     <Labeled label="Enable automatic OSV scanning">
                                         <BooleanField source="feature_automatic_osv_scanning" />
                                     </Labeled>
+                                    <Labeled label="Enable OSV scanning after import">
+                                        <BooleanField source="feature_osv_scan_after_import" />
+                                    </Labeled>
                                     <Labeled label="Enable automatic VulnerableCode scanning">
                                         <BooleanField source="feature_automatic_vulnerablecode_scanning" />
                                     </Labeled>
