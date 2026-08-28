@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from json import loads
-from unittest.mock import call, patch
+from unittest.mock import MagicMock, call, patch
 
 from django.core.management import call_command
 
@@ -63,7 +63,7 @@ class TestOSVScanner(BaseTestCase):
         self.service_frontend = Service.objects.get(product=self.product, name="db_service_internal_frontend")
         self.service_backend = Service.objects.get(product=self.product, name="db_service_internal_backend")
 
-    @patch("requests.post")
+    @patch("requests.Session.post")
     @patch("application.import_observations.scanners.osv_scanner.OSVParser.get_observations")
     @patch("application.import_observations.scanners.base_scanner._process_data")
     @patch("application.import_observations.scanners.base_scanner.Vulnerability_Check.objects.update_or_create")
@@ -101,7 +101,7 @@ class TestOSVScanner(BaseTestCase):
         mock_process_data.assert_not_called()
         mock_vulnerability_check.assert_not_called()
 
-    @patch("requests.post")
+    @patch("requests.Session.post")
     @patch("application.import_observations.scanners.osv_scanner.OSVParser.get_observations")
     @patch("application.import_observations.scanners.base_scanner._process_data")
     @patch("application.import_observations.scanners.base_scanner.Vulnerability_Check.objects.update_or_create")
@@ -182,7 +182,7 @@ class TestOSVScanner(BaseTestCase):
         mock_process_data.assert_called_once()
         mock_vulnerability_check.assert_called_once()
 
-    @patch("requests.post")
+    @patch("requests.Session.post")
     @patch("application.import_observations.scanners.osv_scanner.OSVParser.get_observations")
     @patch("application.import_observations.scanners.base_scanner._process_data")
     @patch("application.import_observations.scanners.base_scanner.Vulnerability_Check.objects.update_or_create")
@@ -273,3 +273,34 @@ class TestOSVScanner(BaseTestCase):
                 "scanner": "OSV (Open Source Vulnerabilities)",
             },
         )
+
+    @patch("application.import_observations.scanners.osv_scanner.create_osv_session")
+    @patch("application.import_observations.scanners.osv_scanner.OSVParser.get_observations")
+    @patch("application.import_observations.scanners.base_scanner._process_data")
+    @patch("application.import_observations.scanners.base_scanner.Vulnerability_Check.objects.update_or_create")
+    def test_scan_license_components_posts_through_one_retrying_session(
+        self,
+        mock_vulnerability_check,
+        mock_process_data,
+        mock_get_observations,
+        mock_create_osv_session,
+    ):
+        # The querybatch POST has to go through the session created by create_osv_session(), because
+        # that is where the Retry policy lives, and all pages of a scan have to share one session.
+        license_components: list[License_Component] = list(License_Component.objects.all())
+        license_components[0].component_purl = "pkg:pypi/django@4.2.11"
+        license_components[1].component_purl = "pkg:golang/golang.org/x/net@v0.25.1-0.20240603202750-6249541f2a6c"
+        product = Product.objects.get(id=1)
+        branch = Branch.objects.get(id=1)
+
+        session = MagicMock()
+        session.__enter__.return_value = session
+        session.post.return_value = MockResponse("osv_querybatch_next_page_token_first.json")
+        mock_create_osv_session.return_value = session
+        mock_get_observations.return_value = [], "OSV (Open Source Vulnerabilities)"
+
+        OSVScanner()._scan_license_components(license_components, product, branch, None)
+
+        mock_create_osv_session.assert_called_once_with()
+        self.assertEqual(2, session.post.call_count)
+        session.__exit__.assert_called_once()

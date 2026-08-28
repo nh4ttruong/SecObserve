@@ -9,6 +9,7 @@ from application.import_observations.parsers.osv.parser import (
     OSV_Component,
     OSV_Vulnerability,
     OSVParser,
+    create_osv_session,
 )
 from application.import_observations.scanners.base_scanner import (
     BaseScanner,
@@ -40,15 +41,20 @@ class OSVScanner(BaseScanner):
 
     def _do_scan(self, license_components: list[License_Component]) -> Any:
         next_pages: dict[License_Component, str] = {}
-        osv_components, next_pages = self._do_scan_page(license_components, next_pages)
 
-        while next_pages:
-            new_osv_components, next_pages = self._do_scan_page(list(next_pages.keys()), next_pages)
-            osv_components += new_osv_components
+        # One session for the whole scan, so all pages share its connection pool and retry policy.
+        with create_osv_session() as session:
+            osv_components, next_pages = self._do_scan_page(session, license_components, next_pages)
+
+            while next_pages:
+                new_osv_components, next_pages = self._do_scan_page(session, list(next_pages.keys()), next_pages)
+                osv_components += new_osv_components
+
         return osv_components
 
     def _do_scan_page(
         self,
+        session: requests.Session,
         license_components: list[License_Component],
         next_pages: dict[License_Component, str],
     ) -> Tuple[list[OSV_Component], dict]:
@@ -78,7 +84,7 @@ class OSVScanner(BaseScanner):
                 ]
             )
 
-            response = requests.post(  # nosec B113
+            response = session.post(  # nosec B113
                 # This is a false positive, there is a timeout of 5 minutes
                 url="https://api.osv.dev/v1/querybatch",
                 data=jsonpickle.encode(queries, unpicklable=False),
