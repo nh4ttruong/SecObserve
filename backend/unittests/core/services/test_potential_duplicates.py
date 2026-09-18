@@ -3,8 +3,10 @@ from unittest.mock import call, patch
 
 from application.core.models import Observation, Potential_Duplicate, Product
 from application.core.services.potential_duplicates import (
+    LOCK_TIMEOUT,
     DuplicateCandidate,
     _match_duplicate_candidates,
+    _set_lock_timeout,
     find_potential_duplicates,
     set_potential_duplicate,
     set_potential_duplicate_both_ways,
@@ -340,3 +342,22 @@ class TestMatchDuplicateCandidates(BaseTestCase):
             {(1, 2): Potential_Duplicate.POTENTIAL_DUPLICATE_TYPE_COMPONENT},
             _match_duplicate_candidates(candidates),
         )
+
+
+class TestLockTimeout(BaseTestCase):
+    def test_no_lock_timeout_for_other_databases(self):
+        with patch("application.core.services.potential_duplicates.connection") as connection_mock:
+            connection_mock.vendor = "mysql"
+
+            _set_lock_timeout()
+
+            connection_mock.cursor.assert_not_called()
+
+    def test_lock_timeout_for_postgresql(self):
+        with patch("application.core.services.potential_duplicates.connection") as connection_mock:
+            connection_mock.vendor = "postgresql"
+
+            _set_lock_timeout()
+
+            cursor = connection_mock.cursor.return_value.__enter__.return_value
+            cursor.execute.assert_called_once_with("SELECT set_config('lock_timeout', %s, true)", [LOCK_TIMEOUT])
