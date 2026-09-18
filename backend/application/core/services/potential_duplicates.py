@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from itertools import batched, combinations
 from typing import NamedTuple, Optional
 
-from django.db import transaction
+from django.db import connection, transaction
 from django.db.models.query import QuerySet
 from huey.contrib.djhuey import on_commit_task
 
@@ -21,6 +21,11 @@ from application.notifications.services.tasks import handle_task_exception
 logger = logging.getLogger("secobserve.core")
 
 BULK_BATCH_SIZE = 1000
+
+# Far above any legitimate hold: an upload keeps the product row from
+# process_license_components() until its request commits. A wait this long is an anomaly, not
+# contention.
+LOCK_TIMEOUT = "15min"
 
 
 class DuplicateCandidate(NamedTuple):
@@ -57,6 +62,7 @@ def find_potential_duplicates(product: Product, branch: Optional[Branch], servic
             # before the delete, makes the second task see what the first one has written.
             # The lock is released with the transaction, so a worker that dies cannot leave
             # it behind.
+            _set_lock_timeout()
             Product.objects.select_for_update().filter(pk=product.pk).first()
 
             _write_potential_duplicates(observations, duplicate_types)
@@ -73,6 +79,26 @@ def find_potential_duplicates(product: Product, branch: Optional[Branch], servic
     except Exception as e:
         handle_task_exception(e)
         raise
+
+
+def _set_lock_timeout() -> None:
+    """Bound the wait for the product row.
+
+    PostgreSQL waits for a row lock forever by default, so a recalculation whose product row is
+    held by a transaction that never ends would block one of the few Huey workers until the
+    process is restarted. A timeout turns that into a failed task, and the next import of the
+    same scope recalculates it. MySQL needs nothing here, innodb_lock_wait_timeout is 50 seconds
+    by default.
+
+    The timeout has to stay well above normal contention: process_license_components() writes
+    the product on every import that changed components, and ATOMIC_REQUESTS keeps that row
+    locked until the request commits.
+    """
+    if connection.vendor == "postgresql":
+        with connection.cursor() as cursor:
+            # set_config() instead of SET, because SET does not take parameters. The third
+            # argument makes it local to the transaction of this recalculation.
+            cursor.execute("SELECT set_config('lock_timeout', %s, true)", [LOCK_TIMEOUT])
 
 
 def _get_duplicate_candidates(observations: QuerySet[Observation]) -> list[DuplicateCandidate]:
