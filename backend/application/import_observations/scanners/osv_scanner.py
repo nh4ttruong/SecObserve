@@ -43,8 +43,8 @@ class OSVScanner(BaseScanner):
     def __init__(self) -> None:
         super().__init__()
         self.parser = OSVParser()
-        # The same purl is used by many products, and the nightly import keeps one scanner for
-        # the whole run, so OSV is asked for a purl once instead of once per product.
+        # The same purl is used by many branches and services of a product, so OSV is asked for a
+        # purl once per scan instead of once per branch and service.
         self.vulnerabilities_by_purl: dict[str, tuple[OSV_Vulnerability, ...]] = {}
 
     def _do_scan(self, license_components: list[License_Component]) -> Any:
@@ -79,7 +79,7 @@ class OSVScanner(BaseScanner):
             pending = list(page_tokens)
 
         # Tuples, because CPython shares one empty tuple: most purls have no vulnerabilities at
-        # all, and the cache holds every purl of the whole scan run.
+        # all, and the cache holds every purl of the whole scan.
         self.vulnerabilities_by_purl.update({purl: tuple(found) for purl, found in vulnerabilities.items()})
 
     def _query_purl_page(
