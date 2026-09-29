@@ -68,3 +68,9 @@ The hour (in UTC time) and minute, when the automatic [API imports](./api_import
 Only products that have `Automatic OSV scanning enabled` turned on will be imported automatically.
 
 ![OSV scanning settings](../assets/images/screenshot_osv_scanning_settings_2.png)
+
+#### Execution
+
+The automatic scan enqueues a separate background task for each product. These tasks have a lower priority than all other background tasks, so that for example notifications don't wait until all products have been scanned. If the background process is restarted during the scans, only the scans running at that moment are lost, the remaining products are still scanned.
+
+The entry `Import observations from API configurations, OSV and VulnerableCode` in the `Background tasks` administration shows how many products have been enqueued. The result of each scan is written to the log, a failed scan is reported as a [notification for exceptions](./notifications.md#notifications-for-exceptions).
