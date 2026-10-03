@@ -1,13 +1,12 @@
+import { Box } from "@mui/material";
 import { useEffect, useState } from "react";
 import {
     AutocompleteArrayInput,
     ChipField,
     Datagrid,
-    FilterForm,
     FunctionField,
     Identifier,
     ListContextProvider,
-    NullableBooleanInput,
     ReferenceInput,
     ResourceContextProvider,
     SelectInput,
@@ -19,12 +18,13 @@ import {
 
 import { getSettingListSize, getSettingRowsPerPage } from "../../access_control/users/functions";
 import { CustomPagination } from "../../commons/custom_fields/CustomPagination";
+import { DateRangeFilter } from "../../commons/custom_fields/DateRangeFilter";
+import { FilterBar } from "../../commons/custom_fields/FilterBar";
 import { SeverityField } from "../../commons/custom_fields/SeverityField";
-import { feature_exploit_information, has_attribute, humanReadableDate } from "../../commons/functions";
+import { has_attribute, humanReadableDate } from "../../commons/functions";
 import { AutocompleteInputMedium } from "../../commons/layout/themes";
 import { usePublishFilterValues } from "../products/FilterValuesContext";
 import {
-    AGE_CHOICES,
     OBSERVATION_SEVERITY_CHOICES,
     OBSERVATION_STATUS_ACTIVE,
     OBSERVATION_STATUS_CHOICES,
@@ -33,22 +33,26 @@ import {
 } from "../types";
 import ObservationBulkAssessment from "./ObservationBulkAssessment";
 import ObservationExpand from "./ObservationExpand";
+import { observationFilters } from "./ObservationFilterBar";
 import { IDENTIFIER_OBSERVATION_GROUP_EMBEDDED_LIST, setListIdentifier } from "./functions";
 
 const STORE_KEY = "observations.embedded.group";
 
-function listFilters(product_group: ProductGroup) {
-    const filters = [
+function GroupFilterBar({ product_group }: { product_group: ProductGroup }) {
+    const { secondary } = observationFilters();
+    const primary = [
         <SelectInput
+            key="default_branch"
             source="default_branch"
             label="Branches"
-            choices={[{ id: true, name: "Default branches" }]}
-            emptyText="All branches"
+            choices={[{ id: true, name: "Default" }]}
+            emptyText="All"
             // Shows "All branches" instead of an empty field when the filter is removed
             slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
             alwaysOn
         />,
         <ReferenceInput
+            key="product"
             source="product"
             reference="products"
             filter={{ product_group: product_group.id }}
@@ -58,24 +62,46 @@ function listFilters(product_group: ProductGroup) {
         >
             <AutocompleteInputMedium optionText="name" />
         </ReferenceInput>,
-        <TextInput source="title" alwaysOn />,
+        <TextInput key="title" source="title" alwaysOn />,
         <AutocompleteArrayInput
+            key="current_severity"
             source="current_severity"
             label="Severity"
             choices={OBSERVATION_SEVERITY_CHOICES}
+            limitTags={1}
             alwaysOn
         />,
-        <AutocompleteArrayInput source="current_status" label="Status" choices={OBSERVATION_STATUS_CHOICES} alwaysOn />,
-        <TextInput source="branch_name" label="Branch / Version" alwaysOn />,
-        <TextInput source="origin_component_name_version" label="Component" alwaysOn />,
-        <TextInput source="scanner" alwaysOn />,
-        <AutocompleteInputMedium source="age" choices={AGE_CHOICES} alwaysOn />,
+        <AutocompleteArrayInput
+            key="current_status"
+            source="current_status"
+            label="Status"
+            choices={OBSERVATION_STATUS_CHOICES}
+            limitTags={1}
+            alwaysOn
+        />,
+        <DateRangeFilter
+            key="date"
+            fields={[
+                { source: "created", label: "Created" },
+                { source: "last_observation_log", label: "Last change" },
+            ]}
+            alwaysOn
+        />,
     ];
-    if (feature_exploit_information()) {
-        filters.push(<NullableBooleanInput source="cve_known_exploited" label="CVE exploited" alwaysOn />);
-    }
-    filters.push(<NullableBooleanInput source="fix_available" label="Fix available" alwaysOn />);
-    return filters;
+    return (
+        // The branch scope only says Default or All, narrowing it keeps MORE FILTERS in the row at 1440px
+        <Box
+            sx={{
+                width: "100%",
+                "& .filter-field > .ra-input.MuiTextField-root.ra-input-default_branch": {
+                    width: "7em",
+                    minWidth: "7em",
+                },
+            }}
+        >
+            <FilterBar filters={primary} moreFilters={secondary} />
+        </Box>
+    );
 }
 
 type ObservationGroupEmbeddedListProps = {
@@ -125,7 +151,7 @@ const ObservationGroupListContent = ({ product_group }: ObservationGroupEmbedded
         <ResourceContextProvider value="observations">
             <ListContextProvider value={listContext}>
                 <div style={{ width: "100%" }}>
-                    <FilterForm filters={listFilters(product_group)} />
+                    <GroupFilterBar product_group={product_group} />
                     <WithListContext
                         render={({ data, sort }) => (
                             <Datagrid
