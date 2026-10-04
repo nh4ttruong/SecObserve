@@ -12,6 +12,7 @@ import { Fragment, MouseEvent, useState } from "react";
 import { useNotify } from "react-admin";
 
 import { fetch_get } from "../../access_control/auth_provider/fetch_instance";
+import { resolveDateFilters } from "../../commons/custom_fields/DateRangeFilter";
 import { feature_license_management, getIconAndFontColor } from "../../commons/functions";
 import { httpClient } from "../../commons/ra-data-django-rest-framework";
 import { useFilterValues } from "./FilterValuesContext";
@@ -87,7 +88,8 @@ const ExportMenu = (props: ExportMenuProps) => {
         );
     };
 
-    const currentViewQuery = () => queryString.stringify({ ...filterValues, product_group: props.product.id });
+    const currentViewQuery = () =>
+        queryString.stringify({ ...resolveDateFilters(filterValues ?? {}), product_group: props.product.id });
 
     const exportCurrentViewExcel = async () => {
         exportDataExcel("/observations/export_excel/?" + currentViewQuery(), "observations.xlsx", "Observations");

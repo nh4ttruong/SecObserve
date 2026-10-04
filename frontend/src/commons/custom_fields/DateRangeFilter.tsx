@@ -12,6 +12,8 @@ import {
 import { KeyboardEvent, MouseEvent, useState } from "react";
 import { useListContext } from "react-admin";
 
+import { getServerDate, getServerDayStart } from "../time_zone";
+
 // The filter state keeps the token, so saved queries and shared links stay relative.
 const PRESETS = [
     { token: "Today", label: "Today", days: 0, age: "Today" },
@@ -28,10 +30,8 @@ const AGE_SOURCE = "last_observation_log";
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 // The only place that decides in which time zone a calendar day starts.
-export const startOfDay = (day?: string, addDays = 0): Date => {
-    const date = day ? new Date(day + "T00:00:00") : new Date();
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate() + addDays);
-};
+export const startOfDay = (day?: string, addDays = 0): Date =>
+    getServerDayStart(day ?? getServerDate(new Date()), addDays);
 
 // A custom range is stored as "2026-09-26..2026-10-02", either side may be empty.
 const parseRange = (value: unknown): [string, string] | undefined => {
@@ -39,7 +39,7 @@ const parseRange = (value: unknown): [string, string] | undefined => {
         return undefined;
     }
     const [from = "", to = "", ...rest] = value.split("..");
-    const isDay = (day: string) => day === "" || (DAY.test(day) && !isNaN(startOfDay(day).getTime()));
+    const isDay = (day: string) => day === "" || (DAY.test(day) && !isNaN(new Date(day + "T00:00:00").getTime()));
     if (rest.length > 0 || (!from && !to) || !isDay(from) || !isDay(to)) {
         return undefined;
     }
