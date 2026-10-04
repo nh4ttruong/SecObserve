@@ -72,7 +72,7 @@ class ProductFilter(FilterSet):
         if days is None:
             return queryset
 
-        today = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
         time_threshold = today - timedelta(days=int(days))
         return queryset.filter(last_observation_change__gte=time_threshold)
 
@@ -304,7 +304,7 @@ class ObservationFilter(FilterSet):
         if days is None:
             return queryset
 
-        today = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
         time_threshold = today - timedelta(days=int(days))
         return queryset.filter(last_observation_log__gte=time_threshold)
 
@@ -421,7 +421,7 @@ class ObservationLogFilter(FilterSet):
         if days is None:
             return queryset
 
-        today = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
         time_threshold = today - timedelta(days=int(days))
         return queryset.filter(created__gte=time_threshold)
 
