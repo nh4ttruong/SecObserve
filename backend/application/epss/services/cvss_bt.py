@@ -8,7 +8,7 @@ from cvss.exceptions import CVSSError
 from django.utils import timezone
 
 from application.commons.models import Settings
-from application.core.models import Observation
+from application.core.models import Observation, Product
 from application.core.services.observation import get_current_severity
 from application.core.types import Severity
 from application.epss.models import Exploit_Information
@@ -157,6 +157,10 @@ def apply_exploit_information_observations(settings: Settings) -> int:
                 "cve_found_in",
                 "current_severity",
             ],
+        )
+        # bulk_update bypasses the observation log, which marks the product as changed
+        Product.objects.filter(pk__in={observation.product_id for observation in updates}).update(
+            last_observation_change=timezone.now()
         )
 
     return num_observations
