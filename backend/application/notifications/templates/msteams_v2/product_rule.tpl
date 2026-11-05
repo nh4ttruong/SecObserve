@@ -38,7 +38,11 @@
                             {
                                 "title": "New status:",
                                 "value": "{{ rule.new_status|escapejs }}"
-                            }
+                            }{% with remark=rule.rejection_remark|default:rule.approval_remark %}{% if remark %},
+                            {
+                                "title": "Remark:",
+                                "value": "{{ remark|escapejs }}"
+                            }{% endif %}{% endwith %}
                         ]
                     }
                 ],

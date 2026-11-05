@@ -54,7 +54,11 @@
                             {
                                 "title": "Comment:",
                                 "value": "{{ observation_log.comment|escapejs }}"
-                            }{% endif %}
+                            }{% endif %}{% with remark=observation_log.rejection_remark|default:observation_log.approval_remark %}{% if remark %},
+                            {
+                                "title": "Remark:",
+                                "value": "{{ remark|escapejs }}"
+                            }{% endif %}{% endwith %}
                         ]
                     }
                 ],

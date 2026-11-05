@@ -19,7 +19,10 @@
         }, {
             "name": "New status:",
             "value": "{{ rule.new_status|escapejs }}"
-        }],
+        }{% with remark=rule.rejection_remark|default:rule.approval_remark %}{% if remark %}, {
+            "name": "Remark:",
+            "value": "{{ remark|escapejs }}"
+        }{% endif %}{% endwith %}],
         "markdown": true
     }],
     "potentialAction": [

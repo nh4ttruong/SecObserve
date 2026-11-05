@@ -12,7 +12,8 @@ Product:       {{ observation.product.name }}
 {% endif %}{% if observation_log.priority_changed %}Priority:      {{ observation_log.priority }}
 {% endif %}{% if observation_log.vex_justification %}Justification: {{ observation_log.vex_justification }}
 {% endif %}{% if observation_log.comment %}Comment:       {{ observation_log.comment }}
-{% endif %}URL:           {{ observation_log_url }}
+{% endif %}{% with remark=observation_log.rejection_remark|default:observation_log.approval_remark %}{% if remark %}Remark:        {{ remark }}
+{% endif %}{% endwith %}URL:           {{ observation_log_url }}
 
 Regards,
 

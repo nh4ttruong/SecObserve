@@ -757,6 +757,40 @@ SecObserve
                 self.assertIn("rule_url", message)
                 self.assertIn("rule_1", message)
 
+    def test_create_notification_message_approval_remarks(self):
+        cases = (
+            (
+                "assessment_approval",
+                self.observation_log_1,
+                {
+                    "observation": self.observation_1,
+                    "observation_log": self.observation_log_1,
+                    "observation_log_url": "url",
+                },
+            ),
+            ("product_rule", self.product_rule_1, {"rule": self.product_rule_1, "rule_url": "url"}),
+        )
+
+        for name, record, context in cases:
+            for field in ("", "rejection_remark", "approval_remark"):
+                if field:
+                    setattr(record, field, 'said "ok" \\ and\nmore')
+                for channel in ("email", "msteams", "msteams_v2", "slack"):
+                    with self.subTest(name=name, field=field, channel=channel):
+                        message = _create_notification_message(
+                            f"{channel}/{name}.tpl", first_line="first line", **context
+                        )
+
+                        if channel != "email":
+                            json.loads(message)
+                        if field:
+                            self.assertIn("Remark", message)
+                            self.assertIn("said", message)
+                        else:
+                            self.assertNotIn("Remark", message)
+                if field:
+                    setattr(record, field, "")
+
     # --- send_user_notification ---
 
     def _get_user(self, **kwargs) -> User:
