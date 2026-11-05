@@ -298,6 +298,8 @@ def assessment_approval(  # pylint: disable=too-many-positional-arguments
     observation_log_comment: Optional[str],
     observation_log_vex_justification: Optional[str],
     observation_log_vex_remediations: Optional[list[dict]],
+    *,
+    approval_remark: Optional[str] = None,
 ) -> None:
     if observation_log.assessment_status != Assessment_Status.ASSESSMENT_STATUS_NEEDS_APPROVAL:
         raise ValidationError("Observation log does not need approval")
@@ -357,6 +359,7 @@ def assessment_approval(  # pylint: disable=too-many-positional-arguments
 
     observation_log.approval_user = approval_user
     observation_log.rejection_remark = rejection_remark if rejection_remark else ""
+    observation_log.approval_remark = approval_remark if approval_remark else ""
     observation_log.approval_date = timezone.now()
     observation_log.assessment_status = assessment_status
     observation_log.save()

@@ -382,6 +382,53 @@ class TestAssessmentApprovalEnforcement(BaseTestCase):
         self.assertEqual(comment, self.log.comment)
         self.assertEqual(VEX_Justification.JUSTIFICATION_COMPONENT_NOT_PRESENT, self.log.vex_justification)
 
+    @patch("application.core.services.assessment.propagate_assessment")
+    @patch("application.core.services.assessment.push_observation_to_issue_tracker")
+    @patch("application.core.services.assessment.check_security_gate")
+    @patch("application.core.services.assessment.send_assessment_approval_receipt_notification")
+    @patch("application.core.services.assessment.get_current_user")
+    def test_approval_stores_approval_remark(
+        self, mock_user, _mock_send, _mock_security_gate, _mock_issue_tracker, _mock_propagate
+    ) -> None:
+        mock_user.return_value = self.owner
+
+        assessment_approval(
+            self.log,
+            Assessment_Status.ASSESSMENT_STATUS_APPROVED,
+            None,
+            None,
+            None,
+            None,
+            approval_remark="Checked with the team",
+        )
+
+        self.log.refresh_from_db()
+        self.assertEqual("Checked with the team", self.log.approval_remark)
+        self.assertEqual("", self.log.rejection_remark)
+
+    @patch("application.core.services.observations_bulk_actions.user_is_allowed_assessment_approver", return_value=True)
+    @patch("application.core.services.observations_bulk_actions.user_has_permission", return_value=True)
+    @patch("application.core.services.observations_bulk_actions.get_current_user")
+    @patch("application.core.services.assessment.get_current_user")
+    def test_bulk_approval_stores_approval_remark(
+        self, mock_user_assessment, mock_user_bulk, _mock_perm, _mock_approver
+    ) -> None:
+        mock_user_assessment.return_value = self.owner
+        mock_user_bulk.return_value = self.owner
+
+        observation_logs_bulk_approval(
+            Assessment_Status.ASSESSMENT_STATUS_APPROVED_WITH_EDITS,
+            "",
+            "Edited comment",
+            None,
+            None,
+            [self.log.pk],
+            approval_remark="Checked",
+        )
+
+        self.log.refresh_from_db()
+        self.assertEqual("Checked", self.log.approval_remark)
+
 
 class TestSaveAssessmentApprovalNotification(BaseTestCase):
     """The notification for assessments that need approval is triggered by save_assessment()."""

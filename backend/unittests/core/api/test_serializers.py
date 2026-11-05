@@ -894,6 +894,14 @@ class TestObservationLogApprovalSerializer(BaseTestCase):
 
         self.assertIn("Approval with edits needs an observation log comment", str(context.exception))
 
+    def test_approval_remark_too_long(self):
+        serializer = ObservationLogApprovalSerializer(
+            data={"assessment_status": Assessment_Status.ASSESSMENT_STATUS_APPROVED, "approval_remark": "x" * 256}
+        )
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("approval_remark", serializer.errors)
+
 
 class TestObservationLogBulkApprovalSerializer(BaseTestCase):
     """Tests for the validate method of ObservationLogBulkApprovalSerializer"""
@@ -1101,6 +1109,35 @@ class TestObservationLogApprovalBaseSerializer(BaseTestCase):
     def test_no_status_valid(self):
         attrs = {
             "rejection_remark": "",
+        }
+
+        self.assertIsNone(self.serializer._validate_approval(attrs))
+
+    def test_rejected_with_approval_remark_raises(self):
+        attrs = {
+            "assessment_status": Assessment_Status.ASSESSMENT_STATUS_REJECTED,
+            "rejection_remark": "No evidence",
+            "approval_remark": "Fine",
+        }
+
+        with self.assertRaises(ValidationError) as e:
+            self.serializer._validate_approval(attrs)
+
+        self.assertIn("Remark for approval cannot be set with rejection", str(e.exception))
+
+    def test_approved_with_approval_remark_valid(self):
+        attrs = {
+            "assessment_status": Assessment_Status.ASSESSMENT_STATUS_APPROVED,
+            "approval_remark": "Checked",
+        }
+
+        self.assertIsNone(self.serializer._validate_approval(attrs))
+
+    def test_approved_with_edits_with_approval_remark_valid(self):
+        attrs = {
+            "assessment_status": Assessment_Status.ASSESSMENT_STATUS_APPROVED_WITH_EDITS,
+            "approval_remark": "Checked",
+            "observation_log_comment": "Edits were made",
         }
 
         self.assertIsNone(self.serializer._validate_approval(attrs))

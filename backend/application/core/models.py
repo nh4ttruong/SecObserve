@@ -529,6 +529,7 @@ class Observation_Log(Model):
         default=Assessment_Status.ASSESSMENT_STATUS_AUTO_APPROVED,
     )
     rejection_remark = TextField(max_length=255, blank=True)
+    approval_remark = TextField(max_length=255, blank=True)
     approval_date = DateTimeField(null=True)
     approval_user = ForeignKey(
         "access_control.User",
