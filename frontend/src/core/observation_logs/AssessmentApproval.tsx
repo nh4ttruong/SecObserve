@@ -6,7 +6,7 @@ import { ArrayInput, RaRecord, SimpleForm, SimpleFormIterator, Validator, useNot
 import MarkdownEdit from "../../commons/custom_fields/MarkdownEdit";
 import SmallButton from "../../commons/custom_fields/SmallButton";
 import { ToolbarCancelSave } from "../../commons/custom_fields/ToolbarCancelSave";
-import { validate_required, validate_required_255 } from "../../commons/custom_validators";
+import { validate_255, validate_required, validate_required_255 } from "../../commons/custom_validators";
 import {
     justificationIsEnabledForStatus,
     remediationsAreEnabledForStatus,
@@ -80,6 +80,8 @@ const AssessmentApproval = ({ observation_log }: AssessmentApprovalProps) => {
         };
         if (data.assessment_status === ASSESSMENT_STATUS_REJECTED) {
             patch.rejection_remark = data.rejection_remark;
+        } else if (data.approval_remark) {
+            patch.approval_remark = data.approval_remark;
         }
         if (data.assessment_status === ASSESSMENT_STATUS_APPROVED_WITH_EDITS) {
             patch.observation_log_comment = comment;
@@ -139,6 +141,13 @@ const AssessmentApproval = ({ observation_log }: AssessmentApprovalProps) => {
                                 source="rejection_remark"
                                 validate={validate_required_255}
                                 label="Remark for rejection"
+                            />
+                        )}
+                        {decision != ASSESSMENT_STATUS_REJECTED && (
+                            <TextInputWide
+                                source="approval_remark"
+                                validate={validate_255}
+                                label="Remark for approval"
                             />
                         )}
                         {decision == ASSESSMENT_STATUS_APPROVED_WITH_EDITS && justificationEnabled && (

@@ -46,6 +46,8 @@ If the approval is required, the dialog showing the observation or and the dialo
 
 Be aware, that the user who has created the assessment is not allowed to approve or reject it. The approval must be done by another user.
 
+A rejection needs a remark, an approval can have an optional one. The remark is shown with the observation log and in the notification to the author of the assessment.
+
 ![Assessment approval](../assets/images/screenshot_assessment_approval.png){ width="60%" style="display: block; margin: 0 auto" }
 
 With **Approved with edits**, the approver can change the comment, the VEX justification and the VEX remediations before the assessment gets active. Several assessments can be approved at once from the list of approvals. With **Approved with edits**, a field that has the same value in all selected assessments is prefilled. A field with different values keeps the value of each assessment, unless **Change for all** is switched on for it: then the new value replaces it in all selected assessments, after a confirmation. The VEX justification and remediations are offered when all selected assessments have a status they apply to.

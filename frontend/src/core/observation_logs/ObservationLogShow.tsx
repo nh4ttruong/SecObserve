@@ -275,6 +275,11 @@ export const ObservationLogComponent = () => {
                                         <TextField source="rejection_remark" />
                                     </Labeled>
                                 )}
+                                {observation_log.approval_remark && (
+                                    <Labeled label="Approval remark">
+                                        <TextField source="approval_remark" />
+                                    </Labeled>
+                                )}
                             </Stack>
                         </Paper>
                     )}

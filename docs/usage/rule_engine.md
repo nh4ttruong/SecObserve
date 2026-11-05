@@ -141,4 +141,6 @@ If the approval is required, the dialog showing the rule  will show a button to 
 
 Be aware, that the user who has created or edited the rule is not allowed to approve or reject it. The approval must be done by another user.
 
+A rejection needs a remark, an approval can have an optional one. The remark is shown with the rule and, for product rules, in the notification to the author of the rule.
+
 ![Rule approval](../assets/images/screenshot_rule_approval.png){ width="60%" style="display: block; margin: 0 auto" }

@@ -5,7 +5,7 @@ import { SimpleForm, useNotify, useRefresh } from "react-admin";
 
 import SmallButton from "../commons/custom_fields/SmallButton";
 import { ToolbarCancelSave } from "../commons/custom_fields/ToolbarCancelSave";
-import { validate_required, validate_required_255 } from "../commons/custom_validators";
+import { validate_255, validate_required, validate_required_255 } from "../commons/custom_validators";
 import { AutocompleteInputMedium, TextInputWide } from "../commons/layout/themes";
 import { httpClient } from "../commons/ra-data-django-rest-framework";
 import { RULE_STATUS_APPROVED, RULE_STATUS_CHOICES_APPROVAL, RULE_STATUS_REJECTED } from "./types";
@@ -22,10 +22,14 @@ const RuleApproval = (props: RuleApprovalProps) => {
     const notify = useNotify();
 
     const saveApproval = async (data: any) => {
-        const patch = {
+        const patch: Record<string, string> = {
             approval_status: data.approval_status,
-            rejection_remark: data.rejection_remark,
         };
+        if (data.approval_status === RULE_STATUS_REJECTED) {
+            patch.rejection_remark = data.rejection_remark;
+        } else if (data.approval_remark) {
+            patch.approval_remark = data.approval_remark;
+        }
 
         httpClient(window.__RUNTIME_CONFIG__.API_BASE_URL + "/" + props.class + "/" + props.rule_id + "/approval/", {
             method: "PATCH",
@@ -75,6 +79,13 @@ const RuleApproval = (props: RuleApprovalProps) => {
                                 source="rejection_remark"
                                 validate={validate_required_255}
                                 label="Remark for rejection"
+                            />
+                        )}
+                        {decision !== RULE_STATUS_REJECTED && (
+                            <TextInputWide
+                                source="approval_remark"
+                                validate={validate_255}
+                                label="Remark for approval"
                             />
                         )}
                     </SimpleForm>

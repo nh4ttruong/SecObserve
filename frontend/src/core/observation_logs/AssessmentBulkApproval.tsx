@@ -17,7 +17,7 @@ import MarkdownEdit from "../../commons/custom_fields/MarkdownEdit";
 import SmallButton from "../../commons/custom_fields/SmallButton";
 import { Spinner } from "../../commons/custom_fields/Spinner";
 import { ToolbarCancelSave } from "../../commons/custom_fields/ToolbarCancelSave";
-import { validate_required, validate_required_255 } from "../../commons/custom_validators";
+import { validate_255, validate_required, validate_required_255 } from "../../commons/custom_validators";
 import { justificationIsEnabledForStatus, remediationsAreEnabledForStatus } from "../../commons/functions";
 import { AutocompleteInputMedium, TextInputWide } from "../../commons/layout/themes";
 import { httpClient } from "../../commons/ra-data-django-rest-framework";
@@ -140,6 +140,8 @@ const AssessmentBulkApproval = ({ storeKey }: AssessmentBulkApprovalProps) => {
         };
         if (data.assessment_status === ASSESSMENT_STATUS_REJECTED) {
             post_data.rejection_remark = data.rejection_remark;
+        } else if (data.approval_remark) {
+            post_data.approval_remark = data.approval_remark;
         }
         if (data.assessment_status !== ASSESSMENT_STATUS_APPROVED_WITH_EDITS) {
             send(post_data);
@@ -248,6 +250,13 @@ const AssessmentBulkApproval = ({ storeKey }: AssessmentBulkApprovalProps) => {
                                 source="rejection_remark"
                                 validate={validate_required_255}
                                 label="Remark for rejection"
+                            />
+                        )}
+                        {decision != ASSESSMENT_STATUS_REJECTED && (
+                            <TextInputWide
+                                source="approval_remark"
+                                validate={validate_255}
+                                label="Remark for approval"
                             />
                         )}
                         {decision == ASSESSMENT_STATUS_APPROVED_WITH_EDITS &&
