@@ -55,6 +55,7 @@ class Rule(Model):
     )
     approval_status = CharField(max_length=16, choices=Rule_Status.RULE_STATUS_CHOICES)
     rejection_remark = TextField(max_length=255, blank=True)
+    approval_remark = TextField(max_length=255, blank=True)
     approval_date = DateTimeField(null=True)
     approval_user = ForeignKey(
         User,
@@ -77,6 +78,7 @@ class Rule(Model):
             self.user = get_current_user()
 
             self.rejection_remark = ""
+            self.approval_remark = ""
             self.approval_date = None
             self.approval_user = None
 

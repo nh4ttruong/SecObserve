@@ -74,6 +74,7 @@ class GeneralRuleViewSet(ModelViewSet):
             general_rule,
             request_serializer.validated_data.get("approval_status"),
             request_serializer.validated_data.get("rejection_remark"),
+            approval_remark=request_serializer.validated_data.get("approval_remark"),
         )
 
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -138,6 +139,7 @@ class ProductRuleViewSet(ModelViewSet):
             product_rule,
             request_serializer.validated_data.get("approval_status"),
             request_serializer.validated_data.get("rejection_remark"),
+            approval_remark=request_serializer.validated_data.get("approval_remark"),
         )
 
         return Response(status=status.HTTP_204_NO_CONTENT)

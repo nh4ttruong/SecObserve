@@ -26,6 +26,7 @@ class GeneralRuleSerializer(ModelSerializer):
     user = CharField(read_only=True)
     approval_status = CharField(read_only=True)
     rejection_remark = CharField(read_only=True)
+    approval_remark = CharField(read_only=True)
     approval_date = DateTimeField(read_only=True)
     approval_user = CharField(read_only=True)
     user_full_name = SerializerMethodField()
@@ -72,6 +73,7 @@ class ProductRuleSerializer(ModelSerializer):
     user = CharField(read_only=True)
     approval_status = CharField(read_only=True)
     rejection_remark = CharField(read_only=True)
+    approval_remark = CharField(read_only=True)
     approval_date = DateTimeField(read_only=True)
     approval_user = CharField(read_only=True)
     user_full_name = SerializerMethodField()
@@ -127,6 +129,7 @@ class ProductRuleSerializer(ModelSerializer):
 class RuleApprovalSerializer(Serializer):
     approval_status = ChoiceField(choices=Rule_Status.RULE_STATUS_CHOICES_APPROVAL, required=True)
     rejection_remark = CharField(max_length=255, required=False, allow_blank=True)
+    approval_remark = CharField(max_length=255, required=False, allow_blank=True)
 
     def validate(self, attrs: dict) -> dict:
         if attrs.get("approval_status") == Rule_Status.RULE_STATUS_APPROVED and attrs.get("rejection_remark"):
@@ -134,6 +137,9 @@ class RuleApprovalSerializer(Serializer):
 
         if attrs.get("approval_status") == Rule_Status.RULE_STATUS_REJECTED and not attrs.get("rejection_remark"):
             raise ValidationError("Rejection needs a remark")
+
+        if attrs.get("approval_status") == Rule_Status.RULE_STATUS_REJECTED and attrs.get("approval_remark"):
+            raise ValidationError("Remark for approval cannot be set with rejection")
 
         return super().validate(attrs)
 

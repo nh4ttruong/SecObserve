@@ -11,7 +11,9 @@ from application.rules.models import Rule
 from application.rules.types import Rule_Status
 
 
-def rule_approval(rule: Rule, approval_status: str, rejection_remark: Optional[str]) -> None:
+def rule_approval(
+    rule: Rule, approval_status: str, rejection_remark: Optional[str], *, approval_remark: Optional[str] = None
+) -> None:
     if rule.approval_status != Rule_Status.RULE_STATUS_NEEDS_APPROVAL:
         raise ValidationError("Rule does not need approval")
 
@@ -22,6 +24,7 @@ def rule_approval(rule: Rule, approval_status: str, rejection_remark: Optional[s
     rule.approval_status = approval_status
     rule.approval_user = approval_user
     rule.rejection_remark = rejection_remark if rejection_remark else ""
+    rule.approval_remark = approval_remark if approval_remark else ""
     rule.approval_date = timezone.now()
     rule.save()
 

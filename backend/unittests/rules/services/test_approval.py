@@ -52,3 +52,19 @@ class TestRuleEngine(BaseTestCase):
         self.assertIsNotNone(rule.approval_date)
         save_mock.assert_called_once()
         receipt_mock.assert_called_once_with(rule)
+
+    @patch("application.rules.services.approval.send_product_rule_approval_receipt_notification")
+    @patch("application.rules.services.approval.get_current_user")
+    @patch("application.rules.models.Rule.save")
+    def test_rule_approval_stores_approval_remark(self, save_mock, get_current_user_mock, _receipt_mock):
+        get_current_user_mock.return_value = self.user_external
+        rule = Rule(
+            approval_status=Rule_Status.RULE_STATUS_NEEDS_APPROVAL,
+            user=self.user_internal,
+        )
+
+        rule_approval(rule, Rule_Status.RULE_STATUS_APPROVED, None, approval_remark="Checked")
+
+        self.assertEqual("Checked", rule.approval_remark)
+        self.assertEqual("", rule.rejection_remark)
+        save_mock.assert_called_once()

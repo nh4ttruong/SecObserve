@@ -6,6 +6,7 @@ from rest_framework.serializers import ValidationError
 from application.access_control.models import User
 from application.core.models import Product
 from application.rules.api.serializers import (
+    GeneralRuleSerializer,
     ProductRuleSerializer,
     RuleApprovalSerializer,
 )
@@ -63,6 +64,42 @@ class TestRuleApprovalSerializer(BaseTestCase):
 
         self.assertEqual(new_attrs, attrs)
 
+    def test_rejected_with_approval_remark_raises(self):
+        serializer = RuleApprovalSerializer()
+        attrs = {
+            "approval_status": Rule_Status.RULE_STATUS_REJECTED,
+            "rejection_remark": "No evidence",
+            "approval_remark": "Fine",
+        }
+
+        with self.assertRaises(ValidationError) as e:
+            serializer.validate(attrs)
+
+        self.assertIn("Remark for approval cannot be set with rejection", str(e.exception))
+
+    def test_approved_with_approval_remark_valid(self):
+        serializer = RuleApprovalSerializer()
+        attrs = {
+            "approval_status": Rule_Status.RULE_STATUS_APPROVED,
+            "approval_remark": "Checked",
+        }
+
+        new_attrs = serializer.validate(attrs)
+
+        self.assertEqual(new_attrs, attrs)
+
+    def test_approval_remark_too_long(self):
+        serializer = RuleApprovalSerializer(
+            data={"approval_status": Rule_Status.RULE_STATUS_APPROVED, "approval_remark": "x" * 256}
+        )
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("approval_remark", serializer.errors)
+
+    def test_approval_remark_read_only_on_rule(self):
+        self.assertTrue(ProductRuleSerializer().fields["approval_remark"].read_only)
+        self.assertTrue(GeneralRuleSerializer().fields["approval_remark"].read_only)
+
 
 class TestProductRuleSerializerNotification(BaseTestCase):
     """The notification for product rules that need approval is triggered by the serializer."""
@@ -98,3 +135,19 @@ class TestProductRuleSerializerNotification(BaseTestCase):
 
         self.assertEqual(Rule_Status.RULE_STATUS_NEEDS_APPROVAL, rule.approval_status)
         mock_send.assert_called_once_with(rule)
+
+    @patch("application.rules.api.serializers.send_product_rule_approval_notification")
+    @patch("application.rules.models.get_current_user")
+    def test_update_clears_approval_remark(self, mock_user, _mock_send) -> None:
+        mock_user.return_value = User.objects.get(pk=2)
+        instance = Rule.objects.create(
+            product=self.product,
+            name="existing_rule",
+            approval_status=Rule_Status.RULE_STATUS_APPROVED,
+            approval_remark="Checked",
+        )
+        serializer = ProductRuleSerializer()
+
+        rule = serializer.update(instance, {"description": "changed"})
+
+        self.assertEqual("", rule.approval_remark)
